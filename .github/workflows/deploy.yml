@@ -5,8 +5,11 @@ on:
     branches:
       - main
     paths:
-      - 'web/**' # Nur ausführen, wenn sich im Web-Ordner was ändert
-
+      - 'web/**'
+  
+  # 2. NEU: Wenn Sanity ruft (Webhook)
+  repository_dispatch:
+    types: [sanity-update]
 jobs:
   web-deploy:
     name: 🎉 Deploy
