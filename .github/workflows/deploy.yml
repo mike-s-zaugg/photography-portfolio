@@ -1,0 +1,46 @@
+name: Deploy Website via FTP
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'web/**' # Nur ausführen, wenn sich im Web-Ordner was ändert
+
+jobs:
+  web-deploy:
+    name: 🎉 Deploy
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Code holen
+      - name: 🚚 Get latest code
+        uses: actions/checkout@v4
+    
+      # 2. Node.js installieren
+      - name: 🟢 Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          
+      # 3. Projekt bauen (erstellt den dist Ordner)
+      - name: 🔨 Build Project
+        env:
+          # Falls du deine Sanity ID in .env hast, muss sie hier auch rein:
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }} 
+        run: |
+          cd web
+          npm ci
+          npm run build
+      
+      # 4. Per FTP hochladen
+      - name: 📂 Sync files via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          
+          # WICHTIG:
+          local-dir: ./web/dist/    # Das, was Astro gebaut hat
+          server-dir: /photo.mikezaugg.ch/    # Der Standard-Ordner bei Plesk
+          

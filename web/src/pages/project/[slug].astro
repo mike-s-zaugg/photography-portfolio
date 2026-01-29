@@ -1,0 +1,118 @@
+---
+// web/src/pages/project/[slug].astro
+import { sanityClient, urlFor } from '../../lib/sanity';
+import '../../styles/global.css';
+
+export async function getStaticPaths() {
+  const query = `*[_type == "project"]{ "slug": slug.current }`;
+  const projects = await sanityClient.fetch(query);
+  return projects.map((project: any) => ({ params: { slug: project.slug } }));
+}
+
+const { slug } = Astro.params;
+
+const query = `*[_type == "project" && slug.current == $slug][0]{
+  title,
+  date,
+  gallery[]{
+    asset->{
+      _id,
+      url,
+      metadata {
+        lqip,
+        exif { iso, fNumber, exposureTime, lensModel }
+      }
+    },
+    alt
+  }
+}`;
+
+const project = await sanityClient.fetch(query, { slug });
+if (!project) return Astro.redirect('/404');
+---
+
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>{project.title} — Photography Portfolio</title>
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={`Photography project: ${project.title}`} />
+  </head>
+  <body class="bg-black text-white min-h-screen font-sans selection:bg-white selection:text-black">
+    
+    <nav class="fixed top-0 left-0 w-full z-50 border-b border-white/10 bg-black/60 backdrop-blur-xl">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+        
+        <a href="/" class="nav-link group flex items-center gap-2 text-gray-300 hover:text-white">
+          <span class="group-hover:-translate-x-1 transition-transform duration-300">←</span>
+          Back to Portfolio
+        </a>
+
+        <span class="text-xs font-mono text-gray-500 uppercase tracking-widest hidden sm:inline">
+          {project.title}
+        </span>
+      
+      </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-20">
+      
+      <header class="mb-16 max-w-3xl">
+        <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 tracking-tight leading-tight">
+          {project.title}
+        </h1>
+        <div class="flex flex-wrap items-center gap-6 text-gray-400 font-mono text-sm uppercase tracking-widest border-l border-gray-700 pl-6">
+          <p class="text-gray-300">{new Date(project.date).toLocaleDateString('de-DE', { year: 'numeric', month: 'long' })}</p>
+          <span class="text-gray-600">•</span>
+          <p class="text-gray-300">{project.gallery?.length || 0} Photos</p>
+        </div>
+      </header>
+
+      <div class="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+        
+        {project.gallery?.map((image: any) => (
+          <div class="break-inside-avoid relative group mb-6">
+            
+            <div class="overflow-hidden rounded-lg bg-gray-900 shadow-lg hover:shadow-2xl transition-shadow duration-300">
+              <img
+                src={urlFor(image).width(1000).url()}
+                alt={image.alt || project.title}
+                class="w-full h-auto object-cover img-transition group-hover:scale-110"
+                loading="lazy"
+                style={`background-image: url(${image.asset.metadata.lqip}); background-size: cover;`}
+              />
+            </div>
+
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-lg flex flex-col justify-end p-6">
+              
+              {image.asset.metadata.exif ? (
+                <div class="flex flex-wrap gap-4 text-[11px] font-mono text-gray-200 uppercase tracking-wider translate-y-4 group-hover:translate-y-0 transition-transform duration-500 delay-75">
+                  {image.asset.metadata.exif.iso && 
+                    <span class="flex items-center gap-1">
+                      <span class="text-gray-400">ISO</span> {image.asset.metadata.exif.iso}
+                    </span>
+                  }
+                  {image.asset.metadata.exif.fNumber && 
+                    <span class="flex items-center gap-1">
+                      <span class="text-gray-400">ƒ</span> {image.asset.metadata.exif.fNumber}
+                    </span>
+                  }
+                  {image.asset.metadata.exif.exposureTime && 
+                    <span class="flex items-center gap-1">
+                      <span class="text-gray-400">S</span> 1/{Math.round(1/image.asset.metadata.exif.exposureTime)}
+                    </span>
+                  }
+                </div>
+              ) : (
+                <span class="text-[11px] text-gray-600 font-mono">No metadata</span>
+              )}
+              
+            </div>
+          </div>
+        ))}
+
+      </div>
+
+    </main>
+  </body>
+</html>
