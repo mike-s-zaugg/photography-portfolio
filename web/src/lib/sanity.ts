@@ -21,6 +21,13 @@ export function urlFor(source: any) {
       url: () => '',
     };
   }
+  // Guard: avoid cases where `asset` exists but is null, or has no usable ref/url
+  if (source.asset === null) {
+    return {
+      width: () => ({ url: () => '' }),
+      url: () => '',
+    };
+  }
 
   // If the gallery item was expanded to include asset->{url,...}, use that URL directly
   if (source.asset && typeof source.asset.url === 'string') {
@@ -28,6 +35,13 @@ export function urlFor(source: any) {
     return {
       width: () => ({ url: () => directUrl }),
       url: () => directUrl,
+    };
+  }
+  // If the source is a direct reference object with missing _ref, avoid calling builder
+  if (source.asset && typeof source.asset === 'object' && !source.asset._ref && !source.asset.url) {
+    return {
+      width: () => ({ url: () => '' }),
+      url: () => '',
     };
   }
 
