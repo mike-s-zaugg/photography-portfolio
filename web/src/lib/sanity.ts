@@ -3,56 +3,48 @@ import { createClient } from '@sanity/client';
 import { createImageUrlBuilder } from '@sanity/image-url';
 
 export const sanityClient = createClient({
-  projectId: 'guh7e7hq', // <--- Hier einfügen!
+  projectId: 'guh7e7hq', 
   dataset: 'production',
-  useCdn: true, // true für schnelle Cache-Antworten
-  apiVersion: '2026-01-29', // Aktuelles Datum oder Version
+  useCdn: true,
+  apiVersion: '2024-01-29',
 });
 
-// Helper um Bild-URLs zu generieren
 const builder = createImageUrlBuilder(sanityClient);
 
-// Robust urlFor: handle cases where the document already contains an `asset.url`
-// (for example when the query projects asset-> { url }) or when asset is missing.
+// Helper: Ein "Fake"-Builder, der alle Methoden schluckt und am Ende einfach die URL ausspuckt.
+// Verhindert Abstürze wie "width(...).height is not a function"
+const mockBuilder = (url: string) => {
+  const chain = {
+    width: () => chain,
+    height: () => chain,
+    fit: () => chain,
+    auto: () => chain,
+    url: () => url // Am Ende kommt der String raus
+  };
+  return chain;
+};
+
 export function urlFor(source: any) {
-  if (!source) {
-    return {
-      width: () => ({ url: () => '' }),
-      url: () => '',
-    };
-  }
-  // Guard: avoid cases where `asset` exists but is null, or has no usable ref/url
-  if (source.asset === null) {
-    return {
-      width: () => ({ url: () => '' }),
-      url: () => '',
-    };
+  // 1. Guard: Wenn gar kein Bild da ist
+  if (!source || !source.asset) {
+    return mockBuilder('');
   }
 
-  // If the gallery item was expanded to include asset->{url,...}, use that URL directly
-  if (source.asset && typeof source.asset.url === 'string') {
-    const directUrl = source.asset.url;
-    return {
-      width: () => ({ url: () => directUrl }),
-      url: () => directUrl,
-    };
-  }
-  // If the source is a direct reference object with missing _ref, avoid calling builder
-  if (source.asset && typeof source.asset === 'object' && !source.asset._ref && !source.asset.url) {
-    return {
-      width: () => ({ url: () => '' }),
-      url: () => '',
-    };
+  // 2. Fall: Das Bild hat schon eine fertige URL (z.B. direkt aus dem Query)
+  if (typeof source.asset.url === 'string') {
+    return mockBuilder(source.asset.url);
   }
 
-  // Otherwise fall back to the image URL builder
+  // 3. Fall: Asset Objekt ist kaputt (kein _ref und keine URL)
+  if (typeof source.asset === 'object' && !source.asset._ref && !source.asset.url) {
+    return mockBuilder('');
+  }
+
+  // 4. Normalfall: Wir nutzen den echten Sanity Builder
   try {
     return builder.image(source);
   } catch (err) {
-    // If builder fails (e.g. null ref), return a safe stub
-    return {
-      width: () => ({ url: () => '' }),
-      url: () => '',
-    };
+    // Falls selbst der echte Builder crasht (z.B. ungültige ID), fangen wir es ab
+    return mockBuilder('');
   }
 }
