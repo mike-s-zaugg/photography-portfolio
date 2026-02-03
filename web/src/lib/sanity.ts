@@ -1,6 +1,6 @@
 // web/src/lib/sanity.ts
 import { createClient } from '@sanity/client';
-import imageUrlBuilder from '@sanity/image-url';
+import { createImageUrlBuilder } from '@sanity/image-url';
 
 export const sanityClient = createClient({
   projectId: 'guh7e7hq', // <--- Hier einfügen!
@@ -10,8 +10,35 @@ export const sanityClient = createClient({
 });
 
 // Helper um Bild-URLs zu generieren
-const builder = imageUrlBuilder(sanityClient);
+const builder = createImageUrlBuilder(sanityClient);
 
+// Robust urlFor: handle cases where the document already contains an `asset.url`
+// (for example when the query projects asset-> { url }) or when asset is missing.
 export function urlFor(source: any) {
-  return builder.image(source);
+  if (!source) {
+    return {
+      width: () => ({ url: () => '' }),
+      url: () => '',
+    };
+  }
+
+  // If the gallery item was expanded to include asset->{url,...}, use that URL directly
+  if (source.asset && typeof source.asset.url === 'string') {
+    const directUrl = source.asset.url;
+    return {
+      width: () => ({ url: () => directUrl }),
+      url: () => directUrl,
+    };
+  }
+
+  // Otherwise fall back to the image URL builder
+  try {
+    return builder.image(source);
+  } catch (err) {
+    // If builder fails (e.g. null ref), return a safe stub
+    return {
+      width: () => ({ url: () => '' }),
+      url: () => '',
+    };
+  }
 }
