@@ -72,37 +72,38 @@ if (!project) return Astro.redirect('/404');
 
       <div class="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
         
-        {project.gallery?.map((image: any) => (
+        {/* FIX: filter out images without an asset to avoid build crashes */}
+        {project.gallery?.filter((image: any) => image.asset).map((image: any) => (
           <div class="break-inside-avoid relative group mb-6">
             
             <div class="overflow-hidden rounded-lg bg-gray-900 shadow-lg hover:shadow-2xl transition-shadow duration-300">
               <img
                 src={urlFor(image).width(1000).url()}
-                data-full={image.asset.url}
+                data-full={image.asset?.url}
                 alt={image.alt || project.title}
                 class="gallery-img w-full h-auto object-cover img-transition group-hover:scale-110 cursor-zoom-in"
                 loading="lazy"
-                style={`background-image: url(${image.asset.metadata.lqip}); background-size: cover;`}
+                style={`background-image: url(${image.asset.metadata?.lqip || ''}); background-size: cover;`}
               />
             </div>
 
             <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-lg flex flex-col justify-end p-6">
               
-              {image.asset.metadata.exif ? (
+              {image.asset.metadata?.exif ? (
                 <div class="flex flex-wrap gap-4 text-[11px] font-mono text-gray-200 uppercase tracking-wider translate-y-4 group-hover:translate-y-0 transition-transform duration-500 delay-75">
-                  {image.asset.metadata.exif.iso && 
+                  {image.asset.metadata?.exif?.iso && 
                     <span class="flex items-center gap-1">
                       <span class="text-gray-400">ISO</span> {image.asset.metadata.exif.iso}
                     </span>
                   }
-                  {image.asset.metadata.exif.fNumber && 
+                  {image.asset.metadata?.exif?.fNumber && 
                     <span class="flex items-center gap-1">
                       <span class="text-gray-400">ƒ</span> {image.asset.metadata.exif.fNumber}
                     </span>
                   }
-                  {image.asset.metadata.exif.exposureTime && 
+                  {image.asset.metadata?.exif?.exposureTime && 
                     <span class="flex items-center gap-1">
-                      <span class="text-gray-400">S</span> 1/{Math.round(1/image.asset.metadata.exif.exposureTime)}
+                      <span class="text-gray-400">S</span> 1/{Math.round(1/(image.asset.metadata.exif.exposureTime))}
                     </span>
                   }
                 </div>
